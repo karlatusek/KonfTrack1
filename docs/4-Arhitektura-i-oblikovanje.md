@@ -180,9 +180,24 @@ dok podatkovni entiteti odgovaraju modelima Prisma ORM-a.
 
 **Slika 4.4. Sekvencijski dijagram podnošenja prijave kriznog događaja**
 
-**Scenarij:** [Naziv interakcije; dodajte UC ID ako postoji.]  
+**Scenarij:**  Predaja znanstvenog rada s provjerom PDF rukopisa i DOI oznaka (F-008, F-009, F-010) 
 **sekvencijski dijagram:** ![Sekvencijski dijagram](./assets/diagrams/4-4-konftrack-report-submission-SD.svg)  
 **PlantUML izvor:** [izvor](./puml/4-4-konftrack-report-submission-SD.puml)
+**Glavni tijek:** Autor ispunjava obrazac: odabire konferenciju i temu te unosi naslov, sažetak, ključne riječi, koautore, autora za kontakt, DOI reference i PDF rukopis. Web-klijent šalje sve u jednom `multipart/form-data` zahtjevu. API provjerava je li korisnik prijavljen i je li datoteka PDF dopuštene veličine, a zatim predaje zahtjev usluzi za radove. Usluga dohvaća konferenciju i provjerava obavezne podatke, temu i rok. Zatim provjerava PDF (broj stranica i imena autora u metapodacima) i za svaku DOI oznaku šalje upit Crossrefu. Na kraju u jednoj transakciji sprema rad sa stanjem „predan”, autore i prvu verziju rukopisa te vraća `201 Created` s eventualnim upozorenjima.
+
+**Važne alternative i odluke:**
+
+| Situacija | Odgovor sustava | Zašto je bitno |
+| --- | --- | --- |
+| Korisnik nije prijavljen | `401 Unauthorized` | Prava se provjeravaju na backendu, ne samo u sučelju (NF-01). |
+| Datoteka nije PDF ili je prevelika | `400 Bad Request` | Neispravna datoteka odbija se prije obrade (F-009). |
+| Nedostaju podaci, tema ne pripada konferenciji ili je rok istekao | `400` / `404` | Nakon isteka roka predaja se automatski onemogućuje (F-006). |
+| PDF ima previše stranica | `400`, datoteka se briše | Na poslužitelju ne ostaju odbijene datoteke. |
+| Imena autora u metapodacima PDF-a | Rad se predaje, uz upozorenje | Anonimnost se ne provodi silom, ali autor se upozorava (F-009, NF-03). |
+| DOI ne postoji ili Crossref nije dostupan | Rad se predaje, uz upozorenje | Nedostupnost vanjskog servisa ne blokira predaju (F-010, AS-01). |
+| Greška pri spremanju u bazu | `500`, datoteka se briše | Transakcija sprječava djelomično spremljen rad. |
+
+**Zaključak:** Scenarij je odabran jer na jednom mjestu prikazuje autentifikaciju, validaciju na više razina, integraciju s vanjskim servisom i transakcijsku pohranu. Pokazuje i ključnu odluku: greške koje čine rad nevaljanim (format, broj stranica, rok) prekidaju predaju, a problemi koje autor može naknadno ispraviti (metapodaci PDF-a, neispravan DOI) vraćaju se kao upozorenja.
 
 
 
